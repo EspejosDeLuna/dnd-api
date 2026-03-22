@@ -1,0 +1,5 @@
+[phases.build] 
+cmds = ["npm install", "node src/loaders/loadData.js"] 
+ 
+[start] 
+cmd = "node src/server.js" 
