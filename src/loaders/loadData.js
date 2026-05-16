@@ -18,10 +18,10 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, '../../data');
-const BASE_URL = 'https://raw.githubusercontent.com/5etools-mirror-3/5etools-2014-src/main/data';
+const BASE_URL_2014 = 'https://raw.githubusercontent.com/5etools-mirror-3/5etools-2014-src/main/data';
+const BASE_URL_2024 = 'https://raw.githubusercontent.com/5etools-mirror-3/5etools-src/main/data';
 
-// ── Todos los archivos que queremos descargar ────────────────────────────────
-// Organizados por categoría para facilitar el mantenimiento
+// ── Archivos 2014 (5etools-2014-src) ────────────────────────────────────────
 const FILES = {
   // Spells
   spells: [
@@ -129,6 +129,28 @@ const FILES = {
   ],
 };
 
+// ── Archivos 2024-exclusivos (5etools-src) ───────────────────────────────────
+// Solo archivos nuevos en 2024 — no solapan con 2014 por source code distinto
+const FILES_2024 = {
+  spells: [
+    'spells/spells-xphb.json',   // PHB 2024
+    'spells/spells-efa.json',
+    'spells/spells-frhof.json',
+  ],
+  bestiary: [
+    'bestiary/bestiary-xmm.json',    // Monster Manual 2024
+    'bestiary/bestiary-xphb.json',   // PHB 2024
+    'bestiary/bestiary-xdmg.json',   // DMG 2024
+    'bestiary/bestiary-abh.json',
+    'bestiary/bestiary-efa.json',
+    'bestiary/bestiary-fraif.json',
+    'bestiary/bestiary-hotb.json',
+    'bestiary/bestiary-lfl.json',
+    'bestiary/bestiary-nf.json',
+    'bestiary/bestiary-wtthc.json',
+  ],
+};
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 async function fetchJSON(url) {
@@ -141,8 +163,8 @@ async function ensureDir(dir) {
   if (!existsSync(dir)) await mkdir(dir, { recursive: true });
 }
 
-async function downloadFile(relPath) {
-  const url = `${BASE_URL}/${relPath}`;
+async function downloadFile(relPath, baseUrl) {
+  const url = `${baseUrl}/${relPath}`;
   const localPath = path.join(DATA_DIR, relPath.replace(/\//g, '_'));
 
   try {
@@ -172,7 +194,7 @@ async function main() {
 
     for (const file of files) {
       total++;
-      const result = await downloadFile(file);
+      const result = await downloadFile(file, BASE_URL_2014);
       if (result) {
         ok++;
         manifest[category].push({
@@ -187,7 +209,29 @@ async function main() {
     }
   }
 
-  // Guardá el manifest para que la API sepa qué archivos tiene disponibles
+  // ── Tanda 2024 ────────────────────────────────────────────────────────────
+  console.log('\n\n══ D&D 2024 (5etools-src) ══');
+  for (const [category, files] of Object.entries(FILES_2024)) {
+    console.log(`\n── ${category.toUpperCase()} 2024 ──`);
+    if (!manifest[category]) manifest[category] = [];
+
+    for (const file of files) {
+      total++;
+      const result = await downloadFile(file, BASE_URL_2024);
+      if (result) {
+        ok++;
+        manifest[category].push({
+          source: file,
+          local: path.basename(result.path),
+          edition: '2024',
+        });
+      } else {
+        fail++;
+      }
+      await new Promise(r => setTimeout(r, 150));
+    }
+  }
+
   await writeFile(
     path.join(DATA_DIR, '_manifest.json'),
     JSON.stringify(manifest, null, 2),
